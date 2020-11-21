@@ -6,6 +6,7 @@ from .tools.login import login
 from .tools.wall import delete_posts
 from .tools.conversations import traverse_conversations
 from .tools.comments import delete_comments
+from .quit_driver import quit_driver_and_reap_children
 
 import argparse
 import getpass
@@ -89,6 +90,16 @@ def run_delete():
         help="The year(s) you want posts deleted."
     )
 
+    parser.add_argument(
+        "-B",
+        "--chromebin",
+        required=False,
+        default=False,
+        dest="chromebin",
+        type=str,
+        help="Optional path to the Google Chrome (or Chromium) binary"
+    )
+
     args = parser.parse_args()
 
     settings["ARCHIVE"] = not args.archive_off
@@ -102,25 +113,31 @@ def run_delete():
         user_email_address=args.email,
         user_password=args_user_password,
         is_headless=args.is_headless,
-        two_factor_token=args.two_factor_token
+        two_factor_token=args.two_factor_token,
+        chrome_binary_path=args.chromebin
     )
 
-    if args.mode == "wall":
-        delete_posts(
-            driver,
-            args.profile_url,
-            year=args.year
-        )
+    try:
+        if args.mode == "wall":
+            delete_posts(
+                driver,
+                args.profile_url,
+                year=args.year
+            )
 
-    elif args.mode == "unlike_pages":
-        unlike_pages(driver, args.profile_url)
+        elif args.mode == "unlike_pages":
+            unlike_pages(driver, args.profile_url)
 
-    elif args.mode == "conversations":
-        traverse_conversations(driver, year=args.year)
+        elif args.mode == "conversations":
+            traverse_conversations(driver, year=args.year)
 
-    else:
-        print("Please enter a valid mode")
-        sys.exit(1)
+        else:
+            print("Please enter a valid mode")
+            sys.exit(1)
+    except BaseException as e:
+        print(e)
+        if driver:
+            quit_driver_and_reap_children(driver)
 
 if __name__ == "__main__":
     run_delete()

@@ -12,6 +12,7 @@ import json
 import logging
 import logging.config
 import os
+import urllib.parse as urlparse
 
 SELENIUM_EXCEPTIONS = (
     NoSuchElementException,
@@ -19,13 +20,20 @@ SELENIUM_EXCEPTIONS = (
     TimeoutException
 )
 
-
 def click_button(driver, el):
     """
     Click a button using Javascript
     """
     driver.execute_script("arguments[0].click();", el)
 
+def scroll_until_element_exists(driver, xpath_expr):
+    while True:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+        try:
+            element = driver.find_element_by_xpath(xpath_expr)
+        except SELENIUM_EXCEPTIONS:
+            continue
+        break
 
 def scroll_to(driver, el):
     """
@@ -35,7 +43,6 @@ def scroll_to(driver, el):
         driver.execute_script("arguments[0].scrollIntoView();", el)
     except SELENIUM_EXCEPTIONS:
         return
-
 
 def logger(name):
     """
@@ -56,17 +63,27 @@ def logger(name):
         logging.config.dictConfig(config["logging"])
     return logging.getLogger(name)
 
-
-def wait_xpath(driver, expr):
+def wait_xpath(driver, expr, timeout=20):
     """
-    Takes an XPath expression, and waits at most 20 seconds until it exists
+    Takes an XPath expression, and waits at most `timeout` seconds until it exists
     """
-    wait = WebDriverWait(driver, 20)
+    wait = WebDriverWait(driver, timeout)
     try:
         wait.until(EC.presence_of_element_located((By.XPATH, expr)))
     except SELENIUM_EXCEPTIONS:
         return
 
+def force_mobile(url):
+    """
+    Force a url to use the mobile site.
+    """
+    parsed = urlparse.urlparse(url)
+    return urlparse.urlunparse((parsed.scheme,
+                                "mobile.facebook.com",
+                                parsed.path,
+                                parsed.params,
+                                parsed.query,
+                                parsed.fragment))
 
 NO_CHROME_DRIVER = """
 You need to manually install the chromedriver for Selenium\n
